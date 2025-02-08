@@ -23,7 +23,12 @@ An AI-powered web app that provides real-time space data insights using **NASA A
 git clone https://github.com/your-username/AI-Space-Data-Explorer.git
 cd AI-Space-Data-Explorer
 ```
-
+## Make a Virtual environment for install libraries 
+``` sh
+pip install virtualenv
+virtualenv myenv
+myenv\Scripts\activate
+```
 ### **2️⃣ Install Dependencies**
 
 ```sh
