@@ -1,8 +1,8 @@
-streamlit
-python-dotenv
-requests
-pandas
-plotly
-langchain
-langchain-groq
-langgraph
+streamlit == 1.42.0
+python-dotenv == 1.0.1
+requests == 2.32.3
+pandas == 2.2.3
+plotly  == 6.0.0
+langchain == 0.3.18
+langchain-groq == 0.2.4
+langgraph == 0.2.70
