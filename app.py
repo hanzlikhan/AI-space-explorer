@@ -12,10 +12,10 @@ import plotly.express as px
 # load_dotenv()
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # NASA_API_KEY = os.getenv("NASA_API_KEY")
-# For deployment on streamlit
+# For deployment on streamlit 
+
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 NASA_API_KEY = st.secrets["NASA_API_KEY"]
-
 # Ensure API keys are provided
 if not GROQ_API_KEY or not NASA_API_KEY:
     st.error("API keys are missing! Add them to the .env file.")
@@ -23,7 +23,7 @@ if not GROQ_API_KEY or not NASA_API_KEY:
 
 # Define State
 class State(TypedDict):
-    messages: Annotated[List[dict], "accumulate"]
+    messages: Annotated[List[dict], "messages"]
 
 # Initialize LLM with Groq
 llm = ChatGroq(groq_api_key=GROQ_API_KEY, model_name="llama-3.3-70b-versatile")
@@ -39,22 +39,9 @@ def fetch_nasa_data():
     except requests.RequestException as e:
         return {"error": str(e)}
 
-# Function to fetch APOD data
-def fetch_apod():
-    try:
-        endpoint = "https://api.nasa.gov/planetary/apod"
-        params = {"api_key": NASA_API_KEY}
-        response = requests.get(endpoint, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        return {"error": str(e)}
-
 # Function to visualize NASA data
 def visualize_data(data):
-    if "error" in data:
-        st.error(f"Error fetching NASA data: {data['error']}")
-    elif "near_earth_objects" in data:
+    if "near_earth_objects" in data:
         asteroids = [
             {
                 "name": obj["name"],
@@ -72,53 +59,71 @@ def visualize_data(data):
     else:
         st.write("No data available.")
 
-# Function to visualize APOD data
-def visualize_apod(data):
-    if "error" in data:
-        st.error(f"Error fetching APOD data: {data['error']}")
-    elif "url" in data:
-        st.image(data["url"], caption=data["title"])
-    else:
-        st.write("No APOD data available.")
-
 # Chatbot Function
 def chatbot(state: State):
-    user_message = state["messages"][-1]["content"]  # Get latest user message
+    user_message = state["messages"][-1]["content"]  # Get the latest user message
     ai_response = llm.invoke(user_message)  # Generate AI response
-    
-    return {"messages": [{"role": "assistant", "content": ai_response.content}]} 
+    return {"messages": state["messages"] + [{"role": "assistant", "content": ai_response.content}]}
 
 # NASA Data Node
 def nasa_data_node(state: State):
     data = fetch_nasa_data()
-    return {"messages": [{"role": "nasa_data", "content": data}]} 
-# APOD Node
-def apod_node(state: State):
-    data = fetch_apod()
-    return {"messages": [{"role": "apod", "content": data}]}
+    return {"messages": state["messages"] + [{"role": "nasa_data", "content": data}]}
+
 # Build LangGraph
 graph_builder = StateGraph(State)
 graph_builder.add_node("chatbot", chatbot)
 graph_builder.add_node("nasa_data", nasa_data_node)
-graph_builder.add_node("apod", apod_node)
 
 graph_builder.add_edge(START, "chatbot")
 graph_builder.add_edge("chatbot", "nasa_data")
-graph_builder.add_edge("nasa_data", "apod")
+graph_builder.add_edge("nasa_data", END)
 
 graph = graph_builder.compile()
 
 # Streamlit UI
-st.set_page_config(page_title="🚀 AI Space Data Explorer", layout="wide")
+st.set_page_config(page_title="🚀 AI Space Data Explorer", layout="wide", page_icon="🌌")
 st.title("🚀 AI Space Data Explorer")
 st.sidebar.header("🔍 Explore Space Data")
+
+# Custom CSS for better styling
+st.markdown("""
+    <style>
+        .stTextArea textarea {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .stButton button {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        .stButton button:hover {
+            background-color: #45a049;
+        }
+        .stMarkdown h2 {
+            color: #4CAF50;
+        }
+        .stSidebar .sidebar .sidebar-content {
+            background-color: #f0f2f6;
+        }
+        .stPlotlyChart {
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Initialize session state for chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 # User Input
-user_input = st.text_area("💬 Ask something about space:", height=100)
+user_input = st.text_area("💬 Ask something about space:", height=100, placeholder="Type your question here...")
 
 if st.button("Submit"):
     if user_input.strip() == "":
@@ -127,24 +132,20 @@ if st.button("Submit"):
         with st.spinner("🚀 Thinking..."):
             # Prepare initial state
             initial_state = {"messages": [{"role": "user", "content": user_input}]}
-
+            
             # Stream the graph
             try:
                 for event in graph.stream(initial_state, stream_mode="values"):
                     response = event["messages"][-1]  # Get latest response
                     st.session_state.chat_history.append(response)  # Save to history
-
+                    
                     if response["role"] == "assistant":
                         st.subheader("🤖 AI Response:")
                         st.write(response["content"])
-
+                    
                     if response["role"] == "nasa_data":
                         st.subheader("📊 NASA Data Visualization:")
                         visualize_data(response["content"])
-
-                    if response["role"] == "apod":
-                        st.subheader("🌌 Astronomy Picture of the Day")
-                        visualize_apod(response["content"])
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
