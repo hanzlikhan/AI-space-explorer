@@ -1,0 +1,6 @@
+# created by virtualenv automatically
+myenv/
+.streamlit/
+myapp.py
+myapp2.py
+
