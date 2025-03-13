@@ -16,7 +16,7 @@ An AI-powered web app that provides real-time space data insights using **NASA A
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀  Installation & Setup
 
 ### **1️⃣ Clone the Repository**
 ```sh
